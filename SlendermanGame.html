@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slender: Las 8 Páginas - Audio de Ambiente Integrado</title>
+    <title>Slender</title>
     <style>
         * {
             margin: 0;
@@ -198,7 +198,7 @@
             }
         }
 
-        #menu-screen, #game-over-screen, #win-screen {
+        #menu-screen, #game-over-screen, #win-screen, #pause-screen {
             position: absolute;
             top: 0;
             left: 0;
@@ -213,13 +213,46 @@
             pointer-events: auto;
         }
 
+        #pause-screen {
+            z-index: 40;
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        .pause-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
         h1 {
             font-size: 48px;
             letter-spacing: 5px;
-            margin-bottom: 15px;
+            margin-bottom: 5px;
             color: #e0e0e0;
             text-shadow: 0 0 10px rgba(255,0,0,0.5);
         }
+
+        /* CRÉDITOS / MADE BY */
+        .credits {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+            .credits a {
+                color: #ff3333;
+                text-decoration: none;
+                font-weight: bold;
+                transition: color 0.2s, text-shadow 0.2s;
+            }
+
+                .credits a:hover {
+                    color: #ff6666;
+                    text-shadow: 0 0 8px rgba(255, 51, 51, 0.8);
+                    text-decoration: underline;
+                }
 
         p.instructions {
             max-width: 620px;
@@ -286,6 +319,7 @@
             font-size: 20px;
             cursor: pointer;
             transition: all 0.2s;
+            min-width: 260px;
         }
 
             .btn:hover {
@@ -336,10 +370,12 @@
         <!-- Pantalla de Inicio -->
         <div id="menu-screen">
             <h1>SLENDER</h1>
+            <div class="credits">Made by: <a href="https://solo.to/ijuanfly" target="_blank" rel="noopener noreferrer">iJuanFly</a></div>
+
             <p class="instructions">
                 Explora el amplio bosque oscuro y encuentra las 8 páginas pegadas a las estructuras.<br>
                 Evita mirar fijamente a Slenderman para no perder la cordura.<br><br>
-                <b>Controles:</b> WASD (Moverse) | Ratón (Mirar) | SHIFT (Correr) | F (Linterna) | E / Clic (Recoger)
+                <b>Controles:</b> WASD (Moverse) | Ratón (Mirar) | SHIFT (Correr) | F (Linterna) | E / Clic (Recoger) | ESC (Pausa)
             </p>
 
             <div style="font-size: 14px; margin-bottom: 8px; color: #aaa;">DIFICULTAD:</div>
@@ -350,6 +386,15 @@
             </div>
 
             <button id="start-btn" class="btn">INICIAR JUEGO</button>
+        </div>
+
+        <!-- Menú de Pausa -->
+        <div id="pause-screen" class="hidden">
+            <h1 style="letter-spacing: 8px; margin-bottom: 30px;">PAUSA</h1>
+            <div class="pause-btn-group">
+                <button id="resume-btn" class="btn">REANUDAR</button>
+                <button id="main-menu-btn" class="btn">MENÚ PRINCIPAL</button>
+            </div>
         </div>
 
         <!-- Game Over Screen -->
@@ -372,10 +417,13 @@
     <script>
                 const container = document.getElementById('game-container');
                 const menuScreen = document.getElementById('menu-screen');
+                const pauseScreen = document.getElementById('pause-screen');
                 const gameOverScreen = document.getElementById('game-over-screen');
                 const winScreen = document.getElementById('win-screen');
                 const gameOverStatic = document.getElementById('game-over-static');
                 const startBtn = document.getElementById('start-btn');
+                const resumeBtn = document.getElementById('resume-btn');
+                const mainMenuBtn = document.getElementById('main-menu-btn');
                 const restartBtn = document.getElementById('restart-btn');
                 const winRestartBtn = document.getElementById('win-restart-btn');
                 const pageCountEl = document.getElementById('page-count');
@@ -388,6 +436,7 @@
                 let scene, camera, renderer;
                 let flashlight, flashlightTarget;
                 let isGameRunning = false;
+                let isPaused = false;
 
                 let yaw = 0;
                 let pitch = 0;
@@ -428,12 +477,10 @@
                 stepsAudio.loop = true;
                 stepsAudio.volume = 0.5;
 
-                // Sonido de Ambiente (constante)
                 const ambienceAudio = new Audio('Ambience.mp3');
                 ambienceAudio.loop = true;
                 ambienceAudio.volume = 0.6;
 
-                // Sonido de Glitch
                 const glitchAudio = new Audio('Glitch SFX.mp3');
                 glitchAudio.loop = true;
                 glitchAudio.volume = 0.8;
@@ -643,7 +690,7 @@
                 }
 
                 document.addEventListener('mousemove', (e) => {
-                    if (document.pointerLockElement === container) {
+                    if (isGameRunning && !isPaused && document.pointerLockElement === container) {
                         yaw -= e.movementX * 0.0022;
                         pitch -= e.movementY * 0.0022;
                         pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
@@ -655,6 +702,14 @@
 
                 window.addEventListener('keydown', (e) => {
                     if (!isGameRunning) return;
+
+                    if (e.key === 'Escape' || e.key.toLowerCase() === 'p') {
+                        togglePause();
+                        return;
+                    }
+
+                    if (isPaused) return;
+
                     keys[e.key.toLowerCase()] = true;
                     if (e.key.toLowerCase() === 'f') {
                         player.flashlightOn = !player.flashlightOn;
@@ -671,12 +726,18 @@
                 });
 
                 container.addEventListener('click', () => {
-                    if (isGameRunning) {
+                    if (isGameRunning && !isPaused) {
                         if (document.pointerLockElement !== container) {
                             container.requestPointerLock();
                         } else {
                             tryCollectPage();
                         }
+                    }
+                });
+
+                document.addEventListener('pointerlockchange', () => {
+                    if (document.pointerLockElement !== container && isGameRunning && !isPaused) {
+                        togglePause(true);
                     }
                 });
 
@@ -687,6 +748,49 @@
                         currentDifficulty = btn.dataset.diff;
                     });
                 });
+
+                function togglePause(forcePause = false) {
+                    if (!isGameRunning) return;
+
+                    if (forcePause) {
+                        isPaused = true;
+                    } else {
+                        isPaused = !isPaused;
+                    }
+
+                    if (isPaused) {
+                        pauseScreen.classList.remove('hidden');
+                        if (document.pointerLockElement) document.exitPointerLock();
+                        stepsAudio.pause();
+                        glitchAudio.pause();
+                        ambienceAudio.pause();
+                        if (currentTrack) currentTrack.pause();
+                    } else {
+                        pauseScreen.classList.add('hidden');
+                        container.requestPointerLock();
+                        ambienceAudio.play().catch(e => {});
+                        if (currentTrack) currentTrack.play().catch(e => {});
+                        animate();
+                    }
+                }
+
+                function returnToMainMenu() {
+                    isGameRunning = false;
+                    isPaused = false;
+                    stopAllAudio();
+                    gameOverAudio.pause();
+                    container.classList.remove('glitch-active');
+                    if (document.pointerLockElement) document.exitPointerLock();
+
+                    staticOverlay.style.opacity = 0;
+                    if (slenderMesh) slenderMesh.visible = false;
+
+                    pauseScreen.classList.add('hidden');
+                    gameOverScreen.classList.add('hidden');
+                    winScreen.classList.add('hidden');
+                    gameOverStatic.style.display = 'none';
+                    menuScreen.classList.remove('hidden');
+                }
 
                 function tryCollectPage() {
                     spawnedPages.forEach(p => {
@@ -736,7 +840,7 @@
                         Object.values(ostTracks).forEach(t => { t.pause(); t.currentTime = 0; });
                         if (nextTrack) {
                             currentTrack = nextTrack;
-                            currentTrack.play().catch(e => {});
+                            if (!isPaused) currentTrack.play().catch(e => {});
                         }
                     }
                 }
@@ -878,7 +982,7 @@
                 }
 
                 function animate() {
-                    if (!isGameRunning) return;
+                    if (!isGameRunning || isPaused) return;
 
                     updatePlayer();
                     updateSlender();
@@ -913,15 +1017,16 @@
                     gameOverAudio.pause();
                     container.classList.remove('glitch-active');
 
-                    // Iniciar el sonido de ambiente en bucle
                     ambienceAudio.play().catch(e => {});
 
                     menuScreen.classList.add('hidden');
+                    pauseScreen.classList.add('hidden');
                     gameOverScreen.classList.add('hidden');
                     winScreen.classList.add('hidden');
                     gameOverStatic.style.display = 'none';
 
                     isGameRunning = true;
+                    isPaused = false;
                     container.requestPointerLock();
                     animate();
                 }
@@ -945,6 +1050,7 @@
 
                 function gameOver(reason) {
                     isGameRunning = false;
+                    isPaused = false;
                     stopAllAudio();
                     container.classList.remove('glitch-active');
 
@@ -964,6 +1070,7 @@
 
                 function winGame() {
                     isGameRunning = false;
+                    isPaused = false;
                     stopAllAudio();
                     container.classList.remove('glitch-active');
 
@@ -974,6 +1081,8 @@
                 }
 
                 startBtn.addEventListener('click', startGame);
+                resumeBtn.addEventListener('click', () => togglePause(false));
+                mainMenuBtn.addEventListener('click', returnToMainMenu);
                 restartBtn.addEventListener('click', startGame);
                 winRestartBtn.addEventListener('click', startGame);
 

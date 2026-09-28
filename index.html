@@ -93,10 +93,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
-            width: 100%;
+            width: calc(100% - 50px); /* Deja espacio limpio para el botón de pausa móvil */
         }
 
         .hud-bottom {
@@ -344,7 +344,7 @@
             z-index: 50;
         }
 
-        /* --- CONTROLES MÓVILES --- */
+        /* --- CONTROLES MÓVILES OPTIMIZADOS --- */
         #mobile-controls {
             position: absolute;
             top: 0;
@@ -353,96 +353,102 @@
             height: 100%;
             pointer-events: none;
             z-index: 15;
-            display: none; /* Se activa dinámicamente si es móvil */
+            display: none;
         }
 
-        /* Área táctil para la cámara (Mitad derecha de la pantalla) */
         #touch-look-area {
             position: absolute;
             top: 0;
             right: 0;
-            width: 50%;
+            width: 60%;
             height: 100%;
             pointer-events: auto;
         }
 
-        /* Joystick Virtual Base */
         #joystick-container {
             position: absolute;
-            bottom: 30px;
-            left: 30px;
-            width: 110px;
-            height: 110px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            bottom: 25px;
+            left: 25px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 50%;
             pointer-events: auto;
             touch-action: none;
+            backdrop-filter: blur(2px);
         }
 
-        /* Palanca del Joystick */
         #joystick-stick {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 45px;
-            height: 45px;
-            background: rgba(255, 255, 255, 0.5);
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.6);
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
         }
 
-        /* Botones táctiles a la derecha */
         .mobile-btn-container {
             position: absolute;
-            bottom: 30px;
+            bottom: 25px;
             right: 20px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
+            align-items: center;
             pointer-events: auto;
+            z-index: 20;
         }
 
         .mobile-action-btn {
-            width: 58px;
-            height: 58px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px solid rgba(255, 255, 255, 0.5);
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
             border-radius: 50%;
-            color: #fff;
-            font-size: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            touch-action: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-            .mobile-action-btn:active, .mobile-action-btn.active {
-                background: rgba(255, 255, 255, 0.8);
-                color: #000;
-            }
-
-        /* Botón de Pausa Móvil (Arriba a la derecha) */
-        #mobile-pause-btn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            width: 40px;
-            height: 40px;
-            background: rgba(0,0,0,0.6);
-            border: 2px solid rgba(255,255,255,0.6);
-            border-radius: 8px;
             color: #fff;
             font-size: 18px;
             display: flex;
             justify-content: center;
             align-items: center;
-            pointer-events: auto;
-            z-index: 16;
+            touch-action: none;
+            backdrop-filter: blur(4px);
+            transition: background 0.1s, transform 0.1s;
         }
+
+            .mobile-action-btn:active, .mobile-action-btn.active {
+                background: rgba(255, 255, 255, 0.7);
+                color: #000;
+                transform: scale(0.92);
+            }
+
+        #mobile-pause-btn {
+            position: absolute;
+            top: 12px;
+            right: 15px;
+            width: 36px;
+            height: 36px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            z-index: 20;
+            backdrop-filter: blur(4px);
+        }
+
+            #mobile-pause-btn:active {
+                background: rgba(255, 255, 255, 0.6);
+                color: #000;
+            }
 
         .hidden {
             display: none !important;
@@ -511,7 +517,7 @@
             <p class="instructions">
                 Explora el bosque oscuro y encuentra las 8 páginas.<br>
                 Evita mirar fijamente a Slenderman.<br><br>
-                <span id="control-instructions"><b>Controles:</b> Joystick (Moverse) | Deslizar Derecha (Mirar) | Botones (Acciones)</span>
+                <span id="control-instructions"><b>Controles PC:</b> WASD (Moverse) | Mouse (Mirar) | E (Interactuar) | F (Linterna) | Shift (Correr)</span>
             </p>
 
             <div style="font-size: 12px; margin-bottom: 6px; color: #aaa;">DIFICULTAD:</div>
@@ -659,7 +665,11 @@
                     if (isMobile) {
                         mobileControls.style.display = 'block';
                         document.getElementById('control-instructions').innerHTML =
-                            "<b>Controles:</b> Joystick Izq (Moverse) | Deslizar Der (Mirar) | Botones (Acciones)";
+                            "<b>Controles Móvil:</b> Joystick Izq (Moverse) | Deslizar Der (Mirar) | Botones (Acciones)";
+                    } else {
+                        mobileControls.style.display = 'none';
+                        document.getElementById('control-instructions').innerHTML =
+                            "<b>Controles PC:</b> WASD (Moverse) | Mouse (Mirar) | E (Interactuar) | F (Linterna) | Shift (Correr)";
                     }
                 }
 
@@ -735,7 +745,6 @@
 
                     const wallMat = new THREE.MeshStandardMaterial({ color: 0x2e2e2e, roughness: 0.8 });
                     const metalMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5 });
-                    const rockMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.9 });
 
                     landmarks.forEach(lm => {
                         const group = new THREE.Group();
@@ -818,7 +827,6 @@
                     const joystickStick = document.getElementById('joystick-stick');
                     const touchLookArea = document.getElementById('touch-look-area');
 
-                    // JOYSTICK
                     let joyTouchId = null;
                     const maxRadius = 40;
 
@@ -827,7 +835,7 @@
                         const touch = e.changedTouches[0];
                         joyTouchId = touch.identifier;
                         updateJoystick(touch);
-                    });
+                    }, { passive: false });
 
                     joystickContainer.addEventListener('touchmove', (e) => {
                         e.preventDefault();
@@ -837,7 +845,7 @@
                                 break;
                             }
                         }
-                    });
+                    }, { passive: false });
 
                     const resetJoystick = (e) => {
                         for (let i = 0; i < e.changedTouches.length; i++) {
@@ -1045,74 +1053,70 @@
                     slenderMesh.visible = true;
                 }
 
-function updatePlayerMovement() {
-    let moveX = 0;
-    let moveZ = 0;
+                function updatePlayerMovement() {
+                    let moveX = 0;
+                    let moveZ = 0;
 
-    // Entrada PC
-    if (keys['s'] || keys['arrowup']) moveZ -= 1;
-    if (keys['w'] || keys['arrowdown']) moveZ += 1;
-    if (keys['a'] || keys['arrowleft']) moveX -= 1;
-    if (keys['d'] || keys['arrowright']) moveX += 1;
+                    // Entrada PC (WASD + Flechas)
+                    if (keys['w'] || keys['arrowup']) moveZ -= 1;
+                    if (keys['s'] || keys['arrowdown']) moveZ += 1;
+                    if (keys['a'] || keys['arrowleft']) moveX -= 1;
+                    if (keys['d'] || keys['arrowright']) moveX += 1;
 
-    // Entrada Joystick Móvil
-    if (isMobile) {
-        moveX = joystickVector.x;
-        // Invertimos joystickVector.y para que presionar hacia arriba (valores Y negativos del touch)
-        // se traduzca en avanzar hacia adelante (moveZ negativo)
-        moveZ = joystickVector.y;
-    }
+                    // Entrada Joystick Móvil
+                    if (isMobile) {
+                        moveX = joystickVector.x;
+                        moveZ = joystickVector.y;
+                    }
 
-    const isMoving = Math.abs(moveX) > 0.1 || Math.abs(moveZ) > 0.1;
-    const wantRun = (keys['shift'] || mobileRunActive) && player.stamina > 5;
-    player.isRunning = isMoving && wantRun;
+                    const isMoving = Math.abs(moveX) > 0.1 || Math.abs(moveZ) > 0.1;
+                    const wantRun = (keys['shift'] || mobileRunActive) && player.stamina > 5;
+                    player.isRunning = isMoving && wantRun;
 
-    const cfg = difficultySettings[currentDifficulty];
+                    const cfg = difficultySettings[currentDifficulty];
 
-    if (player.isRunning) {
-        player.stamina = Math.max(0, player.stamina - cfg.drain * 35 * 0.016);
-    } else {
-        player.stamina = Math.min(100, player.stamina + cfg.regen * 25 * 0.016);
-    }
-    staminaBarEl.style.width = `${player.stamina}%`;
+                    if (player.isRunning) {
+                        player.stamina = Math.max(0, player.stamina - cfg.drain * 35 * 0.016);
+                    } else {
+                        player.stamina = Math.min(100, player.stamina + cfg.regen * 25 * 0.016);
+                    }
+                    staminaBarEl.style.width = `${player.stamina}%`;
 
-    if (isMoving) {
-        const currentSpeed = player.isRunning ? player.runSpeed : player.speed;
+                    if (isMoving) {
+                        const currentSpeed = player.isRunning ? player.runSpeed : player.speed;
 
-        // Vectores de dirección basados en la rotación (yaw)
-        const forwardX = -Math.sin(yaw);
-        const forwardZ = -Math.cos(yaw);
-        const sideX = Math.cos(yaw);
-        const sideZ = -Math.sin(yaw);
+                        const forwardX = -Math.sin(yaw);
+                        const forwardZ = -Math.cos(yaw);
+                        const sideX = Math.cos(yaw);
+                        const sideZ = -Math.sin(yaw);
 
-        // Cálculo de la nueva posición
-        let nextX = player.x + (forwardX * (-moveZ) + sideX * moveX) * currentSpeed;
-        let nextZ = player.z + (forwardZ * (-moveZ) + sideZ * moveX) * currentSpeed;
+                        let nextX = player.x + (forwardX * (-moveZ) + sideX * moveX) * currentSpeed;
+                        let nextZ = player.z + (forwardZ * (-moveZ) + sideZ * moveX) * currentSpeed;
 
-        nextX = Math.max(-390, Math.min(390, nextX));
-        nextZ = Math.max(-390, Math.min(390, nextZ));
+                        nextX = Math.max(-390, Math.min(390, nextX));
+                        nextZ = Math.max(-390, Math.min(390, nextZ));
 
-        const movedDist = Math.hypot(nextX - player.x, nextZ - player.z);
-        gameStats.distanceWalked += movedDist;
+                        const movedDist = Math.hypot(nextX - player.x, nextZ - player.z);
+                        gameStats.distanceWalked += movedDist;
 
-        player.x = nextX;
-        player.z = nextZ;
+                        player.x = nextX;
+                        player.z = nextZ;
 
-        if (stepsAudio.paused) stepsAudio.play().catch(e => { });
-        stepsAudio.playbackRate = player.isRunning ? 1.5 : 1.0;
-    } else {
-        stepsAudio.pause();
-    }
+                        if (stepsAudio.paused) stepsAudio.play().catch(e => { });
+                        stepsAudio.playbackRate = player.isRunning ? 1.5 : 1.0;
+                    } else {
+                        stepsAudio.pause();
+                    }
 
-    camera.position.set(player.x, 2.5, player.z);
+                    camera.position.set(player.x, 2.5, player.z);
 
-    flashlight.position.set(player.x, 2.3, player.z);
-    flashlightTarget.position.set(
-        player.x - Math.sin(yaw) * 10,
-        2.3 + Math.sin(pitch) * 10,
-        player.z - Math.cos(yaw) * 10
-    );
-}
+                    flashlight.position.set(player.x, 2.3, player.z);
+                    flashlightTarget.position.set(
+                        player.x - Math.sin(yaw) * 10,
+                        2.3 + Math.sin(pitch) * 10,
+                        player.z - Math.cos(yaw) * 10
+                    );
+                }
 
                 function updateSlenderAndSanity() {
                     let nearPage = false;

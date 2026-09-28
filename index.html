@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slender</title>
+    <title>Slender: Las 8 Páginas</title>
     <style>
         * {
             margin: 0;
@@ -128,13 +128,6 @@
             width: 100%;
             height: 100%;
             background-color: #3388ff;
-            transition: width 0.1s linear, background-color 0.3s;
-        }
-
-        .battery-bar {
-            width: 100%;
-            height: 100%;
-            background-color: #33cc55;
             transition: width 0.1s linear, background-color 0.3s;
         }
 
@@ -407,12 +400,6 @@
                             <div id="sanity-bar" class="sanity-bar"></div>
                         </div>
                     </div>
-                    <div>
-                        <div style="font-size: 12px; margin-bottom: 2px; color: #888;">BATERÍA LINTERNA</div>
-                        <div class="bar-container">
-                            <div id="battery-bar" class="battery-bar"></div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -424,7 +411,7 @@
 
             <p class="instructions">
                 Explora el amplio bosque oscuro y encuentra las 8 páginas pegadas a las estructuras.<br>
-                Administra la batería de tu linterna y evita mirar a Slenderman.<br><br>
+                Usa tu linterna con cuidado y evita mirar a Slenderman.<br><br>
                 <b>Controles:</b> WASD (Moverse) | Ratón (Mirar) | SHIFT (Correr) | F (Linterna) | E / Clic (Recoger) | ESC (Pausa)
             </p>
 
@@ -481,7 +468,6 @@
                 const flashlightStatusEl = document.getElementById('flashlight-status');
                 const staminaBarEl = document.getElementById('stamina-bar');
                 const sanityBarEl = document.getElementById('sanity-bar');
-                const batteryBarEl = document.getElementById('battery-bar');
                 const interactionMsg = document.getElementById('interaction-msg');
                 const staticOverlay = document.getElementById('screen-static');
                 const vignetteOverlay = document.getElementById('vignette-overlay');
@@ -501,7 +487,6 @@
                     runSpeed: 0.38,
                     stamina: 100,
                     sanity: 100,
-                    battery: 100,
                     pagesCollected: 0,
                     flashlightOn: true,
                     isRunning: false
@@ -520,9 +505,9 @@
 
                 let currentDifficulty = 'normal';
                 const difficultySettings = {
-                    easy: { name: 'Fácil', drain: 0.15, regen: 0.5, baseInterval: 25, distMult: 1.5, batDrain: 0.04 },
-                    normal: { name: 'Normal', drain: 0.25, regen: 0.35, baseInterval: 18, distMult: 1.2, batDrain: 0.08 },
-                    hard: { name: 'Difícil', drain: 0.45, regen: 0.2, baseInterval: 12, distMult: 1.0, batDrain: 0.14 }
+                    easy: { name: 'Fácil', drain: 0.15, regen: 0.5, baseInterval: 25, distMult: 1.5, glitchChance: 0.01 },
+                    normal: { name: 'Normal', drain: 0.25, regen: 0.35, baseInterval: 18, distMult: 1.2, glitchChance: 0.02 },
+                    hard: { name: 'Difícil', drain: 0.45, regen: 0.2, baseInterval: 12, distMult: 1.0, glitchChance: 0.04 }
                 };
 
                 let gameStats = { startTime: 0, slenderSightings: 0, distanceWalked: 0, pagesFound: 0 };
@@ -533,6 +518,17 @@
                 const ambienceAudio = new Audio('Ambience.mp3'); ambienceAudio.loop = true; ambienceAudio.volume = 0.6;
                 const glitchAudio = new Audio('Glitch SFX.mp3'); glitchAudio.loop = true; glitchAudio.volume = 0.8;
                 const flashlightSwitchAudio = new Audio('on off.mp3'); flashlightSwitchAudio.volume = 0.8;
+                const flashlightFailureAudio = new Audio('Failure.mp3'); flashlightFailureAudio.volume = 0.7;
+
+                let lastFlickerSoundTime = 0;
+                function playFlashlightFlickerSound() {
+                    const now = Date.now();
+                    if (now - lastFlickerSoundTime < 120) return;
+                    lastFlickerSoundTime = now;
+
+                    flashlightFailureAudio.currentTime = 0;
+                    flashlightFailureAudio.play().catch(e => {});
+                }
 
                 const ostTracks = {
                     ost1: new Audio('ost1.mp3'), ost2: new Audio('ost2.mp3'),
@@ -771,12 +767,10 @@
 
                     keys[e.key.toLowerCase()] = true;
                     if (e.key.toLowerCase() === 'f') {
-                        if (player.battery > 0) {
-                            player.flashlightOn = !player.flashlightOn;
-                            flashlight.visible = player.flashlightOn;
-                            flashlightStatusEl.textContent = `Linterna: ${player.flashlightOn ? 'ENCENDIDA' : 'APAGADA'} [F]`;
-                            playFlashlightSound();
-                        }
+                        player.flashlightOn = !player.flashlightOn;
+                        flashlight.visible = player.flashlightOn;
+                        flashlightStatusEl.textContent = `Linterna: ${player.flashlightOn ? 'ENCENDIDA' : 'APAGADA'} [F]`;
+                        playFlashlightSound();
                     }
                     if (e.key.toLowerCase() === 'e') {
                         tryCollectPage();
@@ -822,407 +816,273 @@
                         if (document.pointerLockElement) document.exitPointerLock();
                         stepsAudio.pause();
                         glitchAudio.pause();
-                        ambienceAudio.pause();
+                        flashlightFailureAudio.pause();
                         if (currentTrack) currentTrack.pause();
+                        ambienceAudio.pause();
                     } else {
                         pauseScreen.classList.add('hidden');
                         container.requestPointerLock();
                         ambienceAudio.play().catch(e => {});
                         if (currentTrack) currentTrack.play().catch(e => {});
-                        animate();
                     }
-                }
-
-                function returnToMainMenu() {
-                    isGameRunning = false;
-                    isPaused = false;
-                    stopAllAudio();
-                    gameOverAudio.pause();
-                    container.classList.remove('glitch-active');
-                    if (document.pointerLockElement) document.exitPointerLock();
-
-                    staticOverlay.style.opacity = 0;
-                    vignetteOverlay.style.opacity = 0;
-                    if (slenderMesh) slenderMesh.visible = false;
-
-                    pauseScreen.classList.add('hidden');
-                    gameOverScreen.classList.add('hidden');
-                    winScreen.classList.add('hidden');
-                    gameOverStatic.style.display = 'none';
-                    menuScreen.classList.remove('hidden');
                 }
 
                 function tryCollectPage() {
                     spawnedPages.forEach(p => {
-                        if (!p.collected) {
-                            let dist = Math.hypot(p.x - player.x, p.z - player.z);
-                            if (dist < 5.0) {
-                                p.collected = true;
-                                p.mesh.visible = false;
-                                if (p.postMesh) p.postMesh.visible = false;
-                                if (p.light) scene.remove(p.light);
+                        if (!p.collected && Math.hypot(player.x - p.x, player.z - p.z) < 4.0) {
+                            p.collected = true;
+                            p.mesh.visible = false;
+                            p.light.visible = false;
+                            player.pagesCollected++;
+                            gameStats.pagesFound++;
+                            pageCountEl.textContent = `Páginas: ${player.pagesCollected} / 8`;
+                            updateMusic();
 
-                                player.pagesCollected++;
-                                gameStats.pagesFound = player.pagesCollected;
-                                pageCountEl.textContent = `Páginas: ${player.pagesCollected} / 8`;
-
-                                if (player.pagesCollected === 7 && Math.random() < 0.10) {
-                                    slender.x = player.x + Math.sin(yaw) * 2;
-                                    slender.z = player.z + Math.cos(yaw) * 2;
-                                    slenderMesh.position.set(slender.x, 0, slender.z);
-                                    slender.active = true;
-                                }
-
-                                updateOST();
-
-                                if (player.pagesCollected === 8) winGame();
-                                else slender.stalkTimer = 0;
+                            if (player.pagesCollected >= 8) {
+                                endGame(true);
+                            } else {
+                                slender.active = true;
+                                relocateSlender();
                             }
                         }
                     });
                 }
 
-                function stopAllAudio() {
-                    Object.values(ostTracks).forEach(t => { t.pause(); t.currentTime = 0; });
-                    currentTrack = null;
-                    stepsAudio.pause();
-                    glitchAudio.pause(); glitchAudio.currentTime = 0;
-                    ambienceAudio.pause(); ambienceAudio.currentTime = 0;
-                }
-
-                function updateOST() {
+                function updateMusic() {
                     let nextTrack = null;
-                    let count = player.pagesCollected;
-                    if (count === 1 || count === 2) nextTrack = ostTracks.ost1;
-                    else if (count === 3 || count === 4) nextTrack = ostTracks.ost2;
-                    else if (count === 5 || count === 6) nextTrack = ostTracks.ost3;
-                    else if (count === 7) nextTrack = ostTracks.ost4;
+                    if (player.pagesCollected >= 1 && player.pagesCollected <= 2) nextTrack = ostTracks.ost1;
+                    else if (player.pagesCollected >= 3 && player.pagesCollected <= 4) nextTrack = ostTracks.ost2;
+                    else if (player.pagesCollected >= 5 && player.pagesCollected <= 6) nextTrack = ostTracks.ost3;
+                    else if (player.pagesCollected >= 7) nextTrack = ostTracks.ost4;
 
-                    if (currentTrack !== nextTrack) {
-                        Object.values(ostTracks).forEach(t => { t.pause(); t.currentTime = 0; });
-                        if (nextTrack) {
-                            currentTrack = nextTrack;
-                            if (!isPaused) currentTrack.play().catch(e => {});
-                        }
+                    if (nextTrack !== currentTrack) {
+                        if (currentTrack) currentTrack.pause();
+                        currentTrack = nextTrack;
+                        if (currentTrack && isGameRunning && !isPaused) currentTrack.play().catch(e => {});
                     }
                 }
 
-                function updatePlayer() {
-                    let moveSpeed = player.speed;
-                    let diff = difficultySettings[currentDifficulty];
+                function relocateSlender() {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 30 + Math.random() * 40;
+                    slender.x = player.x + Math.sin(angle) * dist;
+                    slender.z = player.z + Math.cos(angle) * dist;
+                    slenderMesh.position.set(slender.x, 0, slender.z);
+                    slenderMesh.visible = true;
+                }
 
-                    let isMoving = (keys['w'] || keys['s'] || keys['a'] || keys['d'] || keys['arrowup'] || keys['arrowdown']);
+                function updatePlayerMovement() {
+                    let moveX = 0;
+                    let moveZ = 0;
 
-                    // AJUSTE DE ENERGÍA (STAMINA):
-                    // Consumo reducido (dura mucho más) y regeneración acelerada
-                    if (keys['shift'] && player.stamina > 0 && isMoving) {
-                        player.isRunning = true;
-                        moveSpeed = player.runSpeed;
-                        player.stamina = Math.max(0, player.stamina - 0.15); // Consumo reducido a la mitad
+                    if (keys['s'] || keys['arrowup']) moveZ -= 1;
+                    if (keys['w'] || keys['arrowdown']) moveZ += 1;
+                    if (keys['a'] || keys['arrowleft']) moveX -= 1;
+                    if (keys['d'] || keys['arrowright']) moveX += 1;
+
+                    const isMoving = moveX !== 0 || moveZ !== 0;
+                    const wantRun = keys['shift'] && player.stamina > 5;
+                    player.isRunning = isMoving && wantRun;
+
+                    const cfg = difficultySettings[currentDifficulty];
+
+                    if (player.isRunning) {
+                        player.stamina = Math.max(0, player.stamina - cfg.drain * 35 * 0.016);
                     } else {
-                        player.isRunning = false;
-                        // Si el jugador está totalmente quieto, la energía se recupera súper rápido (1.2)
-                        // Si camina normalmente, se recupera rápido (0.8)
-                        let regenRate = isMoving ? 0.8 : 1.2;
-                        player.stamina = Math.min(100, player.stamina + regenRate);
+                        player.stamina = Math.min(100, player.stamina + cfg.regen * 25 * 0.016);
                     }
-
                     staminaBarEl.style.width = `${player.stamina}%`;
 
-                    // Batería y Parpadeo Defectuoso con Audio
-                    if (player.flashlightOn) {
-                        player.battery = Math.max(0, player.battery - diff.batDrain);
-                        if (player.battery <= 0) {
-                            player.flashlightOn = false;
-                            flashlight.visible = false;
-                            flashlightStatusEl.textContent = `Linterna: AGOTADA [F]`;
-                            playFlashlightSound();
-                        } else if (player.battery < 25 || player.sanity < 35) {
-                            let prevVisible = flashlight.visible;
-                            flashlight.visible = Math.random() > 0.3;
-                            if (prevVisible !== flashlight.visible && Math.random() < 0.2) {
-                                playFlashlightSound();
-                            }
-                        } else {
-                            flashlight.visible = true;
-                        }
-                    } else {
-                        flashlight.visible = false;
-                        player.battery = Math.min(100, player.battery + 0.02);
-                    }
+                    if (isMoving) {
+                        const currentSpeed = player.isRunning ? player.runSpeed : player.speed;
+                        const forwardX = -Math.sin(yaw);
+                        const forwardZ = -Math.cos(yaw);
+                        const sideX = Math.cos(yaw);
+                        const sideZ = -Math.sin(yaw);
 
-                    batteryBarEl.style.width = `${player.battery}%`;
-                    if (player.battery < 25) batteryBarEl.style.backgroundColor = '#ff3333';
-                    else if (player.battery < 50) batteryBarEl.style.backgroundColor = '#ffaa00';
-                    else batteryBarEl.style.backgroundColor = '#33cc55';
+                        let nextX = player.x + (forwardX * moveZ + sideX * moveX) * currentSpeed;
+                        let nextZ = player.z + (forwardZ * moveZ + sideZ * moveX) * currentSpeed;
 
-                    let vignetteOpacity = 0;
-                    if (player.stamina < 30) vignetteOpacity = (1 - player.stamina / 30) * 0.8;
-                    if (player.sanity < 40) vignetteOpacity = Math.max(vignetteOpacity, (1 - player.sanity / 40) * 0.9);
-                    vignetteOverlay.style.opacity = vignetteOpacity;
+                        nextX = Math.max(-390, Math.min(390, nextX));
+                        nextZ = Math.max(-390, Math.min(390, nextZ));
 
-                    let forwardX = -Math.sin(yaw);
-                    let forwardZ = -Math.cos(yaw);
-                    let rightX = Math.cos(yaw);
-                    let rightZ = -Math.sin(yaw);
+                        const movedDist = Math.hypot(nextX - player.x, nextZ - player.z);
+                        gameStats.distanceWalked += movedDist;
 
-                    let dx = 0, dz = 0;
-
-                    if (keys['w'] || keys['arrowup']) { dx += forwardX * moveSpeed; dz += forwardZ * moveSpeed; }
-                    if (keys['s'] || keys['arrowdown']) { dx -= forwardX * moveSpeed; dz -= forwardZ * moveSpeed; }
-                    if (keys['a']) { dx -= rightX * moveSpeed; dz -= rightZ * moveSpeed; }
-                    if (keys['d']) { dx += rightX * moveSpeed; dz += rightZ * moveSpeed; }
-
-                    if (dx !== 0 || dz !== 0) {
-                        player.x = Math.max(-390, Math.min(390, player.x + dx));
-                        player.z = Math.max(-390, Math.min(390, player.z + dz));
+                        player.x = nextX;
+                        player.z = nextZ;
 
                         if (stepsAudio.paused) stepsAudio.play().catch(e => {});
-                        stepsAudio.playbackRate = player.isRunning ? 1.4 : 0.95;
-                        gameStats.distanceWalked += Math.hypot(dx, dz) * 0.2;
+                        stepsAudio.playbackRate = player.isRunning ? 1.5 : 1.0;
                     } else {
-                        if (!stepsAudio.paused) stepsAudio.pause();
+                        stepsAudio.pause();
                     }
 
-                    camera.position.set(player.x, 3.2, player.z);
+                    camera.position.set(player.x, 2.5, player.z);
 
-                    flashlight.position.copy(camera.position);
-                    const dir = new THREE.Vector3();
-                    camera.getWorldDirection(dir);
-                    flashlightTarget.position.copy(camera.position).add(dir.multiplyScalar(10));
+                    flashlight.position.set(player.x, 2.3, player.z);
+                    flashlightTarget.position.set(
+                        player.x - Math.sin(yaw) * 10,
+                        2.3 + Math.sin(pitch) * 10,
+                        player.z - Math.cos(yaw) * 10
+                    );
                 }
 
-                function updateSlender() {
-                    let diff = difficultySettings[currentDifficulty];
+                function updateSlenderAndSanity() {
+                    let nearPage = false;
+                    spawnedPages.forEach(p => {
+                        if (!p.collected && Math.hypot(player.x - p.x, player.z - p.z) < 5) nearPage = true;
+                    });
+                    interactionMsg.style.display = nearPage ? 'block' : 'none';
 
-                    let pageFactor = player.pagesCollected;
-                    let currentInterval = diff.baseInterval - (pageFactor * 1.8);
-                    if (pageFactor === 0) currentInterval = 35;
+                    if (!slender.active) return;
 
-                    slender.stalkTimer += 0.016;
+                    const distToSlender = Math.hypot(player.x - slender.x, player.z - slender.z);
+                    const dx = slender.x - player.x;
+                    const dz = slender.z - player.z;
+                    const angleToSlender = Math.atan2(-dx, -dz);
 
-                    if (slender.stalkTimer > currentInterval) {
-                        slender.stalkTimer = 0;
-                        slender.active = true;
+                    let diffAngle = Math.abs(yaw - angleToSlender);
+                    diffAngle = Math.atan2(Math.sin(diffAngle), Math.cos(diffAngle));
 
-                        let ambushTree = null;
-                        if (Math.random() < 0.35 && thickTreesList.length > 0) {
-                            let forwardX = -Math.sin(yaw);
-                            let forwardZ = -Math.cos(yaw);
+                    const inSight = Math.abs(diffAngle) < 0.6 && distToSlender < 80;
+                    const cfg = difficultySettings[currentDifficulty];
 
-                            ambushTree = thickTreesList.find(t => {
-                                let d = Math.hypot(t.x - player.x, t.z - player.z);
-                                if (d > 15 && d < 45) {
-                                    let dot = (t.x - player.x) * forwardX + (t.z - player.z) * forwardZ;
-                                    return dot > 0.6;
-                                }
-                                return false;
-                            });
+                    if (player.flashlightOn) {
+                        let isFlickering = false;
+
+                        if (inSight || distToSlender < 45) {
+                            const flickerIntensity = Math.min(1.0, (50 - distToSlender) / 50 + (inSight ? 0.5 : 0));
+                            if (Math.random() < flickerIntensity * 0.7) {
+                                flashlight.visible = Math.random() > 0.4;
+                                flashlight.intensity = Math.random() * 3.5;
+                                isFlickering = true;
+                            } else {
+                                flashlight.visible = true;
+                                flashlight.intensity = 3.5;
+                            }
                         }
-
-                        if (ambushTree) {
-                            slender.x = ambushTree.x;
-                            slender.z = ambushTree.z;
+                        else if (Math.random() < cfg.glitchChance) {
+                            flashlight.visible = Math.random() > 0.5;
+                            flashlight.intensity = 1.0 + Math.random() * 2.5;
+                            isFlickering = true;
                         } else {
-                            let baseDist = 90 - (pageFactor * 8);
-                            let spawnDist = Math.max(30, baseDist * diff.distMult);
-                            let angle = yaw + Math.PI + (Math.random() - 0.5) * 0.5;
-
-                            slender.x = player.x + Math.sin(angle) * spawnDist;
-                            slender.z = player.z + Math.cos(angle) * spawnDist;
+                            flashlight.visible = true;
+                            flashlight.intensity = 3.5;
                         }
 
-                        slenderMesh.position.set(slender.x, 0, slender.z);
+                        if (isFlickering) {
+                            playFlashlightFlickerSound();
+                        }
                     }
 
-                    if (slender.active) {
-                        let dist = Math.hypot(slender.x - player.x, slender.z - player.z);
-
-                        const dirToSlender = new THREE.Vector3(slender.x - player.x, 0, slender.z - player.z).normalize();
-                        const cameraDir = new THREE.Vector3();
-                        camera.getWorldDirection(cameraDir);
-                        cameraDir.y = 0; cameraDir.normalize();
-
-                        let dot = cameraDir.dot(dirToSlender);
-
-                        if (dot > 0.70 && dist < 90) {
-                            slenderMesh.visible = true;
-                            player.sanity = Math.max(0, player.sanity - diff.drain);
-
-                            let staticFactor = Math.min(1, (1 - player.sanity / 100) + (25 / dist));
-                            staticOverlay.style.opacity = staticFactor;
-
-                            container.classList.add('glitch-active');
-                            if (glitchAudio.paused) glitchAudio.play().catch(e => {});
-
-                            if (!slender.wasInSight) {
-                                slender.wasInSight = true;
-                                gameStats.slenderSightings++;
-                            }
-
-                            if (dist < 4.5) gameOver('Slenderman te ha atrapado...');
-                        } else {
-                            slenderMesh.visible = false;
-                            slender.wasInSight = false;
-                            staticOverlay.style.opacity = Math.max(0, (100 - player.sanity) / 100);
-
-                            container.classList.remove('glitch-active');
-                            if (!glitchAudio.paused) {
-                                glitchAudio.pause(); glitchAudio.currentTime = 0;
-                            }
+                    if (inSight) {
+                        if (!slender.wasInSight) {
+                            gameStats.slenderSightings++;
+                            slender.wasInSight = true;
                         }
+                        const drainMult = Math.max(0.5, 1 - distToSlender / 80);
+                        player.sanity = Math.max(0, player.sanity - drainMult * 1.2);
+                        staticOverlay.style.opacity = Math.min(0.9, (1 - distToSlender / 80) + 0.1);
+                        container.classList.add('glitch-active');
+
+                        if (glitchAudio.paused) glitchAudio.play().catch(e => {});
                     } else {
-                        staticOverlay.style.opacity = Math.max(0, (100 - player.sanity) / 100);
+                        slender.wasInSight = false;
+                        staticOverlay.style.opacity = 0;
                         container.classList.remove('glitch-active');
-                        if (!glitchAudio.paused) {
-                            glitchAudio.pause(); glitchAudio.currentTime = 0;
-                        }
-                    }
-
-                    if (!slenderMesh.visible && player.sanity < 100) {
-                        player.sanity = Math.min(100, player.sanity + diff.regen * 0.3);
+                        glitchAudio.pause();
+                        player.sanity = Math.min(100, player.sanity + 0.05);
                     }
 
                     sanityBarEl.style.width = `${player.sanity}%`;
-                    if (player.sanity < 30) sanityBarEl.style.backgroundColor = '#ff3333';
-                    else if (player.sanity < 60) sanityBarEl.style.backgroundColor = '#ffaa00';
-                    else sanityBarEl.style.backgroundColor = '#3388ff';
+                    vignetteOverlay.style.opacity = 1 - (player.sanity / 100);
 
-                    if (player.sanity <= 0) gameOver('Perdiste completamente la cordura.');
+                    if (distToSlender < 3.0 || player.sanity <= 0) {
+                        endGame(false);
+                    }
 
-                    let closeToAnyPage = spawnedPages.some(p => !p.collected && Math.hypot(p.x - player.x, p.z - player.z) < 5.0);
-                    interactionMsg.style.display = closeToAnyPage ? 'block' : 'none';
-                }
+                    slender.stalkTimer += 0.016;
+                    if (slender.stalkTimer > cfg.baseInterval / (player.pagesCollected + 1)) {
+                        slender.stalkTimer = 0;
+                        relocateSlender();
+                    }
 
-                function animate() {
-                    if (!isGameRunning || isPaused) return;
-
-                    updatePlayer();
-                    updateSlender();
-
-                    renderer.render(scene, camera);
-                    requestAnimationFrame(animate);
+                    slenderMesh.lookAt(player.x, 2.5, player.z);
                 }
 
                 function startGame() {
-                    stepsAudio.play().then(() => stepsAudio.pause()).catch(() => {});
-                    flashlightSwitchAudio.play().then(() => flashlightSwitchAudio.pause()).catch(() => {});
+                    player.x = 0; player.z = 260;
+                    player.stamina = 100; player.sanity = 100;
+                    player.pagesCollected = 0; player.flashlightOn = true;
+                    yaw = 0; pitch = 0;
+                    slender.active = false; slenderMesh.visible = false;
+                    gameStats = { startTime: Date.now(), slenderSightings: 0, distanceWalked: 0, pagesFound: 0 };
 
-                    player.x = 0;
-                    player.z = 260;
-                    player.pagesCollected = 0;
-                    player.sanity = 100;
-                    player.stamina = 100;
-                    player.battery = 100;
-                    player.flashlightOn = true;
-                    yaw = 0;
-                    pitch = 0;
-
-                    slender.active = false;
-                    slender.stalkTimer = 0;
-
-                    pageCountEl.textContent = 'Páginas: 0 / 8';
-                    flashlightStatusEl.textContent = 'Linterna: ENCENDIDA [F]';
-
-                    gameStats = {
-                        startTime: Date.now(),
-                        slenderSightings: 0,
-                        distanceWalked: 0,
-                        pagesFound: 0
-                    };
-
-                    spawnPages();
-                    stopAllAudio();
-                    gameOverAudio.pause();
-                    container.classList.remove('glitch-active');
-
-                    ambienceAudio.play().catch(e => {});
-
+                    pageCountEl.textContent = "Páginas: 0 / 8";
                     menuScreen.classList.add('hidden');
-                    pauseScreen.classList.add('hidden');
                     gameOverScreen.classList.add('hidden');
                     winScreen.classList.add('hidden');
                     gameOverStatic.style.display = 'none';
 
+                    spawnPages();
                     isGameRunning = true;
                     isPaused = false;
                     container.requestPointerLock();
-                    animate();
+
+                    ambienceAudio.play().catch(e => {});
                 }
 
-                function formatTime(secs) {
-                    let m = Math.floor(secs / 60);
-                    let s = Math.floor(secs % 60);
-                    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-                }
+                function endGame(won) {
+                    isGameRunning = false;
+                    if (document.pointerLockElement) document.exitPointerLock();
 
-                function buildStatsHTML() {
-                    let totalSecs = Math.floor((Date.now() - gameStats.startTime) / 1000);
-                    return `
-                        <b>Dificultad:</b> <span>${difficultySettings[currentDifficulty].name}</span><br>
-                        <b>Tiempo de Supervivencia:</b> <span>${formatTime(totalSecs)}</span><br>
-                        <b>Páginas Encontradas:</b> <span>${gameStats.pagesFound} / 8</span><br>
-                        <b>Avistamientos de Slender:</b> <span>${gameStats.slenderSightings}</span><br>
-                        <b>Distancia Recorrida:</b> <span>${Math.floor(gameStats.distanceWalked)} metros</span>
+                    stepsAudio.pause();
+                    glitchAudio.pause();
+                    flashlightFailureAudio.pause();
+                    ambienceAudio.pause();
+                    if (currentTrack) currentTrack.pause();
+
+                    const timeSpent = Math.round((Date.now() - gameStats.startTime) / 1000);
+                    const statsHtml = `
+                        Dificultad: <span>${difficultySettings[currentDifficulty].name}</span><br>
+                        Páginas Recolectadas: <span>${player.pagesCollected} / 8</span><br>
+                        Tiempo Sobrevivido: <span>${timeSpent}s</span><br>
+                        Avistamientos de Slender: <span>${gameStats.slenderSightings}</span><br>
+                        Distancia Recorrida: <span>${Math.round(gameStats.distanceWalked)}m</span>
                     `;
-                }
 
-                function gameOver(reason) {
-                    isGameRunning = false;
-                    isPaused = false;
-                    stopAllAudio();
-                    container.classList.remove('glitch-active');
-
-                    if (document.pointerLockElement) document.exitPointerLock();
-
-                    gameOverStatic.style.display = 'flex';
-                    gameOverAudio.currentTime = 0;
-                    gameOverAudio.play().catch(e => {});
-
-                    setTimeout(() => {
-                        gameOverStatic.style.display = 'none';
-                        document.getElementById('death-reason').textContent = reason;
-                        document.getElementById('game-over-stats').innerHTML = buildStatsHTML();
-                        gameOverScreen.classList.remove('hidden');
-                    }, 4000);
-                }
-
-                function winGame() {
-                    isGameRunning = false;
-                    isPaused = false;
-                    stopAllAudio();
-                    container.classList.remove('glitch-active');
-
-                    if (document.pointerLockElement) document.exitPointerLock();
-
-                    document.getElementById('win-stats').innerHTML = buildStatsHTML();
-                    winScreen.classList.remove('hidden');
-                }
-
-                fullscreenBtn.addEventListener('click', () => {
-                    if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen().catch(err => {
-                            console.log(`Error al activar pantalla completa: ${err.message}`);
-                        });
-                        fullscreenBtn.textContent = '🗗 Salir de Pantalla Completa';
+                    if (won) {
+                        document.getElementById('win-stats').innerHTML = statsHtml;
+                        winScreen.classList.remove('hidden');
                     } else {
-                        if (document.exitFullscreen) {
-                            document.exitFullscreen();
-                            fullscreenBtn.textContent = '⛶ Pantalla Completa';
-                        }
+                        gameOverAudio.play().catch(e => {});
+                        gameOverStatic.style.display = 'flex';
+                        setTimeout(() => {
+                            gameOverStatic.style.display = 'none';
+                            document.getElementById('game-over-stats').innerHTML = statsHtml;
+                            gameOverScreen.classList.remove('hidden');
+                        }, 2000);
                     }
-                });
-
-                document.addEventListener('fullscreenchange', () => {
-                    if (!document.fullscreenElement) fullscreenBtn.textContent = '⛶ Pantalla Completa';
-                    else fullscreenBtn.textContent = '🗗 Salir de Pantalla Completa';
-                });
+                }
 
                 startBtn.addEventListener('click', startGame);
                 resumeBtn.addEventListener('click', () => togglePause(false));
-                mainMenuBtn.addEventListener('click', returnToMainMenu);
+                mainMenuBtn.addEventListener('click', () => {
+                    isGameRunning = false;
+                    pauseScreen.classList.add('hidden');
+                    menuScreen.classList.remove('hidden');
+                });
                 restartBtn.addEventListener('click', startGame);
                 winRestartBtn.addEventListener('click', startGame);
+
+                fullscreenBtn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        container.requestFullscreen().catch(err => {});
+                    } else {
+                        document.exitFullscreen();
+                    }
+                });
 
                 window.addEventListener('resize', () => {
                     if (camera && renderer) {
@@ -1233,6 +1093,18 @@
                 });
 
                 init3D();
+
+                function animate() {
+                    requestAnimationFrame(animate);
+
+                    if (isGameRunning && !isPaused) {
+                        updatePlayerMovement();
+                        updateSlenderAndSanity();
+                        renderer.render(scene, camera);
+                    }
+                }
+
+                animate();
     </script>
 </body>
 </html>
